@@ -22,13 +22,14 @@ LAST_ANSWER = ""
 app = FastAPI(title="Municipal Law Assistant Backend")
 
 # -----------------------------
-# CORS
+# CORS (✅ FIXED)
 # -----------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "https://municipal-law-assistant.vercel.app",  # ✅ REQUIRED
     ],
     allow_credentials=True,
     allow_methods=["*"],
