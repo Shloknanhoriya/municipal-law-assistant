@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { API_URL } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -34,7 +35,7 @@ interface ApiResponse {
 }
 
 const askQuestion = async (question: string): Promise<ApiResponse> => {
-  const response = await fetch("http://localhost:8000/ask", {
+  const response = await fetch(`${API_URL}/ask`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,6 +49,7 @@ const askQuestion = async (question: string): Promise<ApiResponse> => {
 
   return response.json();
 };
+
 
 
 const Index = () => {
