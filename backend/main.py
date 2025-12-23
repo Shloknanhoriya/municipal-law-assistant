@@ -144,3 +144,6 @@ def ask(query: Query):
             "show_context": False,
             "context": []
         }
+@app.get("/health")
+def health():
+    return {"status": "ok"}
