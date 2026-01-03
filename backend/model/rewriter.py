@@ -55,27 +55,19 @@ class Attention(nn.Module):
         return torch.softmax(self.v(energy).squeeze(2), dim=1)
 
 # ===============================
-# Encoder (BIDIRECTIONAL)
+# Encoder
 # ===============================
 class Encoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.embedding = nn.Embedding(VOCAB_SIZE, EMBED_DIM, padding_idx=PAD_IDX)
-        self.lstm = nn.LSTM(
-            EMBED_DIM,
-            HIDDEN_DIM,
-            batch_first=True,
-            bidirectional=True
-        )
+        self.lstm = nn.LSTM(EMBED_DIM, HIDDEN_DIM, batch_first=True, bidirectional=True)
 
     def forward(self, x):
         embedded = self.embedding(x)
         outputs, (hidden, cell) = self.lstm(embedded)
-
-        # Combine forward + backward
         hidden = hidden[0] + hidden[1]
         cell = cell[0] + cell[1]
-
         return outputs, hidden, cell
 
 # ===============================
@@ -92,15 +84,12 @@ class Decoder(nn.Module):
     def forward(self, token, hidden, cell, encoder_outputs):
         token = token.unsqueeze(1)
         embedded = self.embedding(token)
-
         attn_weights = self.attention(hidden, encoder_outputs)
         context = torch.bmm(attn_weights.unsqueeze(1), encoder_outputs)
-
         lstm_input = torch.cat((embedded, context), dim=2)
         output, (hidden, cell) = self.lstm(
             lstm_input, (hidden.unsqueeze(0), cell.unsqueeze(0))
         )
-
         prediction = self.fc(output.squeeze(1))
         return prediction, hidden.squeeze(0), cell.squeeze(0)
 
@@ -117,46 +106,60 @@ class Seq2SeqAttention(nn.Module):
 # Load model
 # ===============================
 model = Seq2SeqAttention().to(DEVICE)
-model.load_state_dict(
-    torch.load("model/seq2seq_attention.pt", map_location=DEVICE)
-)
+model.load_state_dict(torch.load("model/seq2seq_attention.pt", map_location=DEVICE))
 model.eval()
 
 # ===============================
-# Rewrite function
+# Safe rewrite rules
+# ===============================
+def safe_rewrite(text: str) -> str:
+    replacements = {
+        "may recover costs for cleaning": "can recover cleaning costs from",
+        "shall be liable to": "is liable to",
+        "may attract penalties": "can attract penalties",
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text
+
+# ===============================
+# Neural rewrite (controlled)
 # ===============================
 @torch.no_grad()
-def rewrite_text(legal_text: str) -> str:
-    if not legal_text or len(legal_text.strip()) < 20:
-        return legal_text
+def neural_rewrite(text: str) -> str:
+    src = encode(text)
+    encoder_outputs, hidden, cell = model.encoder(src)
+    token = torch.tensor([SOS_IDX], device=DEVICE)
+    result = []
 
-    try:
-        src = encode(legal_text)
-        encoder_outputs, hidden, cell = model.encoder(src)
+    for _ in range(MAX_LEN):
+        output, hidden, cell = model.decoder(token, hidden, cell, encoder_outputs)
+        pred = output.argmax(1).item()
+        if pred == EOS_IDX:
+            break
+        result.append(idx2word.get(pred, ""))
+        token = torch.tensor([pred], device=DEVICE)
 
-        token = torch.tensor([SOS_IDX], device=DEVICE)
-        result = []
+    rewritten = " ".join(result)
+    return rewritten if len(rewritten.split()) >= 8 else text
 
-        for _ in range(MAX_LEN):
-            output, hidden, cell = model.decoder(
-                token, hidden, cell, encoder_outputs
-            )
+# ===============================
+# FINAL API
+# ===============================
+def rewrite_text(text: str) -> str:
+    if not text or len(text.strip()) < 20:
+        return text
 
-            pred = output.argmax(1).item()
-            if pred == EOS_IDX:
-                break
+    replacements = {
+        "may attract penalties": "may attract penalties as prescribed by municipal by-laws",
+        "is prohibited": "is prohibited under municipal regulations",
+        "local authority": "the local municipal authority",
+    }
 
-            result.append(idx2word.get(pred, ""))
-            token = torch.tensor([pred], device=DEVICE)
+    out = text
+    for k, v in replacements.items():
+        out = out.replace(k, v)
 
-        rewritten = rewrite_text(factual_answer)
-
-        if len(rewritten.split()) < 8:
-            return factual_answer
-
-        return rewritten
+    return out
 
 
-    except Exception as e:
-        print("Rewriter error:", e)
-        return legal_text

@@ -35,13 +35,18 @@ interface ApiResponse {
 }
 
 const askQuestion = async (question: string): Promise<ApiResponse> => {
-  const response = await fetch(`${API_URL}/ask`, {
+  const API_URL = import.meta.env.VITE_API_URL?.trim();
+
+  const response = await fetch(`${API_URL}/api/ask`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ question: question.trim() }),
+    body: JSON.stringify({
+      question: question.trim(),
+    }),
   });
+
 
   if (!response.ok) {
     throw new Error(`Server responded with status ${response.status}`);

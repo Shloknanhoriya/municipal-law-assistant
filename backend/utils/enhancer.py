@@ -47,12 +47,38 @@ def is_in_domain(question: str) -> bool:
     q = question.lower()
 
     keywords = [
-        "municipal", "waste", "garbage", "trash", "penalty", "fine",
-        "spit", "urinate", "dump", "segregation", "license",
-        "tax", "inspection", "public", "nuisance"
+        # Core municipal
+        "municipal", "bylaw", "local authority", "civic",
+
+        # Waste & sanitation
+        "waste", "garbage", "trash", "dump", "segregation",
+        "litter", "burning", "bulk waste",
+
+        # Public nuisance
+        "nuisance", "spit", "urinate", "defecation",
+        "noise", "mosquito", "stagnant water", "dirty",
+
+        # Building & property 🔥
+        "building", "construction", "boundary", "encroachment",
+        "neighbor", "neighbour", "land", "plot", "property",
+        "unauthorized", "permit", "approval", "demolition",
+        "setback", "occupancy",
+
+        # Licensing & trade
+        "license", "licence", "shop", "trade", "vendor",
+        "hawker", "food establishment",
+
+        # Taxation
+        "tax", "property tax", "arrears", "penalty",
+        "assessment", "recovery",
+
+        # Enforcement & notices
+        "inspection", "notice", "show cause", "eviction",
+        "seizure", "fine", "penalty"
     ]
 
     return any(k in q for k in keywords)
+
 from difflib import SequenceMatcher
 
 def is_repetitive(new: str, old: str, threshold=0.75) -> bool:
